@@ -125,7 +125,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function AddFile(FullPath: string; FileData: TWin32FindData): TListItem; overload;
+    function AddFile(FullPath: TFileName; FileData: TWin32FindData): TListItem; overload;
     function AddFile(FileName: TFileName; LoadFileData: Boolean = True): TListItem; overload; virtual;
     procedure SetupFileColumns(FileColumns: TFileInfos);
     procedure SetSortColumn(Column: TListColumn); virtual;
@@ -247,7 +247,7 @@ type
     procedure SetDirectory(NewDir: string); // Set directory and show its content
     procedure SetSortColumn(ColType: TListColumn); overload; override;
     procedure SetViewColumns(Columns: TFileInfos);
-    procedure AddFileData(NewItem: TListItem; Path: string; FindData: TWin32FindData); // add a file
+    procedure AddFileData(NewItem: TListItem; Path: string; FindData: TWin32FindData); // adds a file
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -529,7 +529,7 @@ begin
     if String1 > String2 then Result := 1
     else if String1 < String2 then Result := -1
     else begin
-    { if String1 = String2 then } // stings are equal, try to sort on Caption
+      // stings are equal, try to sort by Caption
       // Converts NAME to uppercase to ignore case
       Caption1 := AnsiUpperCase(Item1.Caption);
       Caption2 := AnsiUpperCase(Item2.Caption);
@@ -540,7 +540,7 @@ begin
   end;
 
   // invert Sort if requested
-  if InvertSort then Result := -Result; // Result * -1; // is sort reverted ?
+  if InvertSort then Result := -Result;
 end;
 
 constructor TFileListView.Create(AOwner: TComponent);
@@ -807,7 +807,7 @@ begin
   end;
 end;
 
-function TFileListView.AddFile(FullPath: string; FileData: TWin32FindData): TListItem;
+function TFileListView.AddFile(FullPath: TFileName; FileData: TWin32FindData): TListItem;
 var
   i: Integer;
 begin
@@ -910,15 +910,11 @@ begin
   if Item1.Caption = DDOTD then Result := -1  // '..' directory is always on top
   else if Item2.Caption = DDOTD then Result := 1
   else begin
-    // Tests Column[1] (Item1.SubItems[0], Size) to force Directories before Files
+    // force Directories before Files
     if IsDirectory(Item1) AND (NOT IsDirectory(Item2)) then Result := -1
-    else if NOT IsDirectory(Item1) AND IsDirectory(Item2) then Result := 1 // file is always "greater" than directory
+    else if NOT IsDirectory(Item1) AND IsDirectory(Item2) then Result := 1 // directory is always "greater" than file
     else begin
-      // both items are directory or file
-      //ColType := FL.FSortColumnType;
-      //ItemIndex := FL.ItemIndexByID(FL.FSortColumnID); // Note! for first column/item it returns -1, second - 0
-//      InvertSort := FL.FInvertSort;
-
+      // both items are directory here or both are not directory (files)
 
       case FL.FSortColumnType of
         fiName: begin  // Converts NAME to uppercase to ignore case
@@ -934,7 +930,7 @@ begin
           FileDataP2 := FL.FData.GetValuePointer(Item2);
 
           var size1 := MakeFileSize(FileDataP1.nFileSizeHigh, FileDataP1.nFileSizeLow);
-          var size2 := MakeFileSize(FileDataP2^.nFileSizeHigh, FileDataP2^.nFileSizeLow);
+          var size2 := MakeFileSize(FileDataP2^.nFileSizeHigh, FileDataP2^.nFileSizeLow); // looks like '^' does not matter here
 
           if size1 > size2 then Result := 1
           else if size1 < size2 then Result := -1;
@@ -966,7 +962,7 @@ begin
         fiModified: begin
           FileDataP1 := FL.FData.GetValuePointer(Item1);
           FileDataP2 := FL.FData.GetValuePointer(Item2);
-          // Date-Time field sorted in reverse order by default
+          // Date-Time fields sorted in reverse order by default
           Result := -CompareFileTime(FileDataP1^.ftLastWriteTime, FileDataP2^.ftLastWriteTime);
         end;
 
@@ -986,50 +982,10 @@ begin
 
       //  fiAll: ;
       end;
-     {
-      // if ColIndex < 0, just a sort by NAME is required
-      //if ItemIndex < 0 then begin // Index=-1 means first column
-      if ColType = fiName then begin
-        // Converts NAME to uppercase to ignore case
-        Caption1 := AnsiUpperCase(Item1.Caption);
-        Caption2 := AnsiUpperCase(Item2.Caption);
-
-        if Caption1 > Caption2 then Result := 1
-        else if Caption1 < Caption2 then Result := -1;
-      end
-      else
-      begin
-        // checks for invalid column specified (1st item)
-        if Item1.SubItems.Count < Ord(ColType) //ItemIndex
-        	then String1 := ''
-        	else String1 := AnsiUpperCase(Item1.SubItems[Ord(ColType) - 1]); //ItemIndex]);
-
-        // checks for invalid column specified (2nd item)
-        if Item2.SubItems.Count < Ord(ColType) //ItemIndex
-        	then String2 := ''
-        	else String2 := AnsiUpperCase(Item2.SubItems[Ord(ColType) - 1]); //ItemIndex]);
-
-        // compare the selected values
-        if String1 > String2 then Result := 1
-        	else if String1 < String2 then Result := -1
-          else begin
-	          //if String1 = String2 then stings are equal, try to sort on Caption
-            Caption1 := AnsiUpperCase(Item1.Caption);
-            Caption2 := AnsiUpperCase(Item2.Caption);
-            // Compare NAMES
-            if Caption1 > Caption2 then Result := 1
-            	else if Caption1 < Caption2 then Result := -1
-          end;
-      end;
-      }
 
       // invert Sort if requested
-      if FL.FInvertSort then Result := -Result; // is sort reverted ?
+      if FL.FInvertSort then Result := -Result;
 
-      // Date-Time field sorted in reverse order by default
-      //if ColType = fiCreated then	Result := -Result
-      //else if ColType = fiModified then	Result := -Result
-      //else if ColType = fiLastAccess then	Result := -Result;
     end;
   end;
 end;
@@ -1349,9 +1305,9 @@ end;
 
 function TFileList.AddFile(FileName: TFileName): TListItem;
 var
-  FindHandle :THandle;
-  FindData :TWin32FindData;
-  path :string;
+  FindHandle: THandle;
+  FindData: TWin32FindData;
+  path: string;
 begin
   Result := nil;
   FindHandle := Windows.FindFirstFile(PChar(FileName), FindData);
@@ -1422,7 +1378,7 @@ begin
 
   FData.SetValue(NewItem, FindData); // store original data to be able to sort it properly
 
-	if Assigned(FOnFileAdd) then FOnFileAdd(self, NewItem, Path, FindData); // user callback for OnAddFile
+  if Assigned(FOnFileAdd) then FOnFileAdd(self, NewItem, Path, FindData); // user callback for OnAddFile
 end;
 
 // Update File List with contents of the directory specified in Directory property
@@ -1491,7 +1447,7 @@ begin
     if FDirectory.IsEmpty() then exit; // Clear items and do nothing if Directory is empty
 
     GetDirList(FDirectory);
-    CustomSort(@SortProcFileList, Integer(self));	// sort items by current sort item, default by fiName
+    CustomSort(@SortProcFileList, Integer(self)); // sort items by current sort item, default by fiName
 
     if Assigned(FOnReadDirectory) then FOnReadDirectory(self, FDirectory); // user callback for OnReadDirectory
   finally
