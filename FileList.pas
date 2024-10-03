@@ -218,12 +218,12 @@ type
   // TFileList is a TListView clone wich behaves like Windows Explorer's file window
   TFileList = class(TFileListView)
   private
-    FFileTypes       : TFileTypes;      // file attributes
+    FFileTypes       : TFileTypes;      // kind of filter by file attributes
     //FDirectory       :TPatternList;    // current directory
     FDirectory       : string;          // current directory
     FFileMask        : TStringList;     // file specifications list
-    FDisplayDirs      : Boolean;         // include directories in file scan
-    FDisplayParentDir: Boolean;         // show '..' directory
+    FDisplayDirs     : Boolean;         // include directories in file scan
+    FDisplayParentDir: Boolean;         // whether to show '..' directory
     FViewColumns     : TFileInfos;      // visible columns
     FSortColumnType  : TFileInfo;       // current sort column
     FData            : THash<TListItem, TWin32FindData>;
@@ -296,13 +296,8 @@ uses WinAPI.CommCtrl, System.StrUtils, System.Math, Vcl.Dialogs, MaskSearch;
 const
   DOTD = '.';
   DDOTD = '..';
-var
- // FColumnInfos: TColumnInfos;  // columns default informations
-  //FInfoColumn   :TInfoColumn;   // columns informations
-  DirShellInfo: TShFileInfo;
-  WinDir: string;
 
-const  DefColumnInfos: TColumnInfos = ( (Caption:'Name'; Width:150; Alignment:taLeftJustify),
+  DefColumnInfos: TColumnInfos = ( (Caption:'Name'; Width:150; Alignment:taLeftJustify),
                                   (Caption:'Size'; Width:100; Alignment:taRightJustify),
                                   (Caption:'Type'; Width:130; Alignment:taLeftJustify),
                                   (Caption:'Modified'; Width:100; Alignment:taLeftJustify),
@@ -314,6 +309,12 @@ const  DefColumnInfos: TColumnInfos = ( (Caption:'Name'; Width:150; Alignment:ta
                                   (Caption:'Path'; Width:200; Alignment:taLeftJustify),
                                   (Caption:'All'; Width:0; Alignment:taLeftJustify)
                                   );
+
+
+var
+  DefDirShellInfo: TShFileInfo;
+  WinDir: string;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // UTILITIES
@@ -789,7 +790,7 @@ begin
         else Result.SubItems[fiNameIndex] := ExtractFileName(FileName);
 
       //Result.Caption := ExtractFileName(FileName);
-      Result.ImageIndex := DirShellInfo.IIcon; // Set default item icon index
+      Result.ImageIndex := DefDirShellInfo.IIcon; // Set default item icon index
       if FFileInfoToColumnID[fiType]      <> -1 then Result.SubItems[ItemIndexByInfo(fiType)]      := '-';
       if FFileInfoToColumnID[fiSize]      <> -1 then Result.SubItems[ItemIndexByInfo(fiSize)]      := '-';
       if FFileInfoToColumnID[fiDosName]   <> -1 then Result.SubItems[ItemIndexByInfo(fiDosName)]   := '-';
@@ -1511,5 +1512,5 @@ end;
 initialization
   SetLength(WinDir, MAX_PATH);
   GetWindowsDirectory(@(WinDir[1]), MAX_PATH);
-  ShGetFileInfo(@(WinDir[1]), 0, DirShellInfo, SizeOf(DirShellInfo), SHGFI_SYSICONINDEX OR SHGFI_TYPENAME OR SHGFI_SMALLICON);
+  ShGetFileInfo(@(WinDir[1]), 0, DefDirShellInfo, SizeOf(DefDirShellInfo), SHGFI_SYSICONINDEX OR SHGFI_TYPENAME OR SHGFI_SMALLICON);
 end.
