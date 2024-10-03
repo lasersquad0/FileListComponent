@@ -1,0 +1,4 @@
+
+- sort by Size and Dates work not fully correct. Its sorts by final string but should sort by actual values.
+- rename property DisplayDirectory to DisplayDirectories to better reflect its meaning
+- add sorting marks to TFileView?
